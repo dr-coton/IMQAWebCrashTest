@@ -9404,8 +9404,17 @@ var OnLoadManager = /** @class */function () {
   };
   // Low-version - DURATION 데이터 넣는 함수
   OnLoadManager.prototype.getOnloadDurationWithLowVersion = function (navigation) {
-    var now = new Date().valueOf();
-    return Math.abs((navigation.loadEventEnd || now) - (navigation.redirectStart || now));
+    var duration_result = Math.abs(this.getLoadEndTime(navigation) - this.getLoadStartTime(navigation));
+    if (duration_result === 0) {
+      var _a = this.getOnloadTimingWithLowVersion(navigation),
+        server = _a.server,
+        network = _a.network,
+        dom = _a.dom,
+        loading = _a.loading;
+      var totalData = Math.abs(server + network + dom + loading);
+      return totalData;
+    }
+    return duration_result;
   };
   // Low-version - TIMING 데이터 넣는 함수
   OnLoadManager.prototype.getOnloadTimingWithLowVersion = function (navigation) {
@@ -9586,9 +9595,6 @@ var TransactionManager_1 = __webpack_require__(3553);
 var SPAOnLoadManager_1 = __webpack_require__(2559);
 var OnLoadManager_1 = __webpack_require__(4067);
 var IMQAAgent_1 = __webpack_require__(6483);
-var OnWeb_1 = __webpack_require__(7247);
-var SPAOnRender_1 = __webpack_require__(4359);
-var PerformanceObserverManager_1 = __webpack_require__(5171);
 var SPAOnLoad = /** @class */function (_super) {
   __extends(SPAOnLoad, _super);
   function SPAOnLoad() {
@@ -9600,15 +9606,11 @@ var SPAOnLoad = /** @class */function (_super) {
     this.header.set(config);
     this.header.webviewTxId = TransactionManager_1.TransactionManager.GenerateTxID();
     this.onLoadManager = new OnLoadManager_1.OnLoadManager(this);
-    var POM = PerformanceObserverManager_1.PerformanceObserverManager.GetInstance();
+    // const POM = PerformanceObserverManager.GetInstance();
     // 대시보드 상세 스크린네임 생성을 위해서 onRender 데이터를 넣음
-    if (config.agentType === "web") {
-      OnWeb_1.OnWeb.GetInstance().init(config);
-      OnWeb_1.OnWeb.GetInstance().create();
-    }
-    this.onRender = new SPAOnRender_1.SPAOnRender();
-    this.onRender.init(config);
-    POM.subscribe(this.onRender);
+    // this.onRender = new SPAOnRender();
+    // this.onRender.init(config);
+    // POM.subscribe(this.onRender);
     this.timeStamp = 0;
     setTimeout(function () {
       _this.finish();
@@ -9629,7 +9631,7 @@ var SPAOnLoad = /** @class */function (_super) {
       startTime: this.startTime,
       endTime: this.endTime
     };
-    this.onRender.finish();
+    // this.onRender.finish();
     IMQAAgent_1.IMQAAgent.GetInstance().send(data);
     // 데이터 보낸 이후 초기화
     IMQAAgent_1.IMQAAgent.GetInstance().config.customAliasName = null;
@@ -9796,251 +9798,6 @@ exports.SPAOnLoadWindowManager = SPAOnLoadWindowManager;
 
 /***/ }),
 
-/***/ 4359:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({
-  value: true
-}));
-exports.SPAOnRender = void 0;
-var Header_1 = __webpack_require__(2929);
-var TransactionManager_1 = __webpack_require__(3553);
-var IMQAAgent_1 = __webpack_require__(6483);
-var SPAOnRenderManager_1 = __webpack_require__(8863);
-var SPAOnRenderBody_1 = __webpack_require__(7680);
-var SPAOnRender = /** @class */function () {
-  function SPAOnRender() {
-    this.header = new Header_1.Header();
-    this.body = new SPAOnRenderBody_1.SPAOnRenderBody();
-    this.startTime = 0;
-    this.endTime = 0;
-  }
-  SPAOnRender.prototype.init = function (config) {
-    this.startTime = new Date().valueOf();
-    this.header.set(config);
-    this.header.webviewTxId = TransactionManager_1.TransactionManager.GetTxID();
-    this.onRenderManager = new SPAOnRenderManager_1.SPAOnRenderManager(this);
-    this.onRenderManager.init();
-  };
-  SPAOnRender.prototype.create = function () {};
-  SPAOnRender.prototype.finish = function () {
-    this.endTime = new Date().valueOf();
-    this.body = this.onRenderManager.getBody();
-    var data = {
-      header: this.header,
-      body: this.body,
-      startTime: this.startTime,
-      endTime: this.endTime
-    };
-    IMQAAgent_1.IMQAAgent.GetInstance().send(data);
-  };
-  SPAOnRender.prototype.update = function (entry) {
-    this.onRenderManager.pushEntry(entry);
-  };
-  return SPAOnRender;
-}();
-exports.SPAOnRender = SPAOnRender;
-
-/***/ }),
-
-/***/ 7680:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({
-  value: true
-}));
-exports.SPAOnRenderBody = void 0;
-var SPAOnRenderBody = /** @class */function () {
-  function SPAOnRenderBody() {
-    this.type = "onRender";
-    this.timings = [];
-    this.scripts = [];
-  }
-  return SPAOnRenderBody;
-}();
-exports.SPAOnRenderBody = SPAOnRenderBody;
-
-/***/ }),
-
-/***/ 8863:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({
-  value: true
-}));
-exports.SPAOnRenderManager = void 0;
-var TransactionManager_1 = __webpack_require__(3553);
-var IMQAAgent_1 = __webpack_require__(6483);
-var SPAOnRenderManager = /** @class */function () {
-  function SPAOnRenderManager(onRender) {
-    this.IMQAConfig = IMQAAgent_1.IMQAAgent.GetInstance().config;
-    this.onRender = onRender;
-    this.onRenderBody = this.onRender.body;
-    this.measures = [];
-  }
-  SPAOnRenderManager.prototype.init = function () {
-    this.onDOMContentLoaded();
-    this.onLoaded();
-  };
-  ;
-  SPAOnRenderManager.prototype.onDOMContentLoaded = function () {
-    var _this = this;
-    window.addEventListener("DOMContentLoaded", function (event) {
-      _this.onRenderBody.timings.push({
-        name: "DCL",
-        fullName: "dom-content-loaded",
-        timing: event.timeStamp || 0
-      });
-    });
-  };
-  SPAOnRenderManager.prototype.onLoaded = function () {
-    var _this = this;
-    window.addEventListener("load", function (event) {
-      _this.onRenderBody.timings.push({
-        name: "LOAD",
-        fullName: "dom-loaded",
-        timing: event.timeStamp || 0
-      });
-      _this.endTime = new Date().valueOf();
-      setTimeout(function () {
-        _this.onRender.finish();
-      }, _this.IMQAConfig.collectTime);
-    });
-  };
-  SPAOnRenderManager.prototype.getEndTime = function () {
-    return this.endTime;
-  };
-  SPAOnRenderManager.prototype.getBody = function () {
-    return this.onRender.body;
-  };
-  SPAOnRenderManager.prototype.pushEntry = function (entry, timeStamp) {
-    if (timeStamp === void 0) {
-      timeStamp = 0;
-    }
-    switch (entry.entryType) {
-      case "measure":
-        this.onRenderBody.scripts = this.getMeasureData(entry);
-        break;
-      case "paint":
-        this.onRenderBody.timings.push(this.getPaintData(entry));
-        break;
-      case "largest-contentful-paint":
-        this.onRenderBody.timings.push(this.getLCPData(entry));
-        break;
-      default:
-        break;
-    }
-  };
-  SPAOnRenderManager.prototype.getPaintData = function (entry) {
-    var shortName;
-    switch (entry.name) {
-      case "first-paint":
-        shortName = "FP";
-        break;
-      case "first-contentful-paint":
-        shortName = "FCP";
-        break;
-      default:
-        shortName = "Other";
-        break;
-    }
-    return {
-      name: shortName,
-      fullName: entry.name,
-      timing: entry.startTime
-    };
-  };
-  SPAOnRenderManager.prototype.getLCPData = function (entry) {
-    return {
-      name: "LCP",
-      fullName: "largest-contentful-paint",
-      timing: entry.startTime
-    };
-  };
-  /**
-   * measure 데이터 가져오기
-   * @param entry
-   */
-  SPAOnRenderManager.prototype.getMeasureData = function (entry) {
-    var _a, _b, _c;
-    // dration 값이 0인 것들 수집 제외
-    if (entry.duration < this.IMQAConfig.onRenderDurationLimit) {
-      return this.measures;
-    }
-    this.measures.push({
-      name: entry.name,
-      start: new Date().getMilliseconds(),
-      type: 'function',
-      parentId: ((_a = entry.detail) === null || _a === void 0 ? void 0 : _a.parentName) ? this.getParentId((_b = entry.detail) === null || _b === void 0 ? void 0 : _b.parentName) : '',
-      scriptId: TransactionManager_1.TransactionManager.GenerateScriptID(),
-      parentName: ((_c = entry.detail) === null || _c === void 0 ? void 0 : _c.parentName) || '',
-      duration: entry.duration
-    });
-    return this.measures;
-  };
-  SPAOnRenderManager.prototype.getParentId = function (params_name) {
-    var result = this.measures.filter(function (item) {
-      return item.name === params_name;
-    });
-    return result[result.length - 1]['scriptId'];
-  };
-  /**
-   * 특정 조건에 따른 트리 노드추가
-   * @param parent
-   * @param node
-   */
-  SPAOnRenderManager.prototype.insertNode = function (parent, node) {
-    if (parent.children.length > 0) {
-      var lastChild = parent.children[parent.children.length - 1];
-      if (node.start >= lastChild.start + lastChild.duration && node.duration !== 0) {
-        parent.children.push(node);
-        return;
-      }
-      this.insertNode(lastChild, node);
-    } else {
-      parent.children.push(node);
-    }
-  };
-  /**
-   * 트리 생성 로직
-   * @param data
-   */
-  SPAOnRenderManager.prototype.buildTree = function (data) {
-    var root = {
-      children: [],
-      start: 0,
-      duration: 0,
-      type: "function",
-      scriptId: TransactionManager_1.TransactionManager.GenerateScriptID()
-    };
-    for (var i = 0; i < data.length; i++) {
-      var node = {
-        name: data[i].name,
-        start: data[i].startTime,
-        duration: data[i].duration,
-        children: [],
-        type: "function",
-        scriptId: TransactionManager_1.TransactionManager.GenerateScriptID()
-      };
-      this.insertNode(root, node);
-    }
-    return root.children;
-  };
-  return SPAOnRenderManager;
-}();
-exports.SPAOnRenderManager = SPAOnRenderManager;
-
-/***/ }),
-
 /***/ 3721:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
@@ -10050,7 +9807,7 @@ exports.SPAOnRenderManager = SPAOnRenderManager;
 Object.defineProperty(exports, "__esModule", ({
   value: true
 }));
-exports.getBrowserName = exports.makeValidURL = exports.parseURL = void 0;
+exports.makeValidURL = exports.parseURL = void 0;
 var IMQAConfig_1 = __webpack_require__(6159);
 function parseURL(url) {
   var _a = new URL(url),
@@ -10084,486 +9841,6 @@ function makeValidURL(urlString) {
   }
 }
 exports.makeValidURL = makeValidURL;
-function getBrowserName(userAgent) {
-  // The order matters here, and this may report false positives for unlisted browsers.
-  if (userAgent.includes("Firefox")) {
-    // "Mozilla/5.0 (X11; Linux i686; rv:104.0) Gecko/20100101 Firefox/104.0"
-    return "Mozilla Firefox";
-  } else if (userAgent.includes("SamsungBrowser")) {
-    // "Mozilla/5.0 (Linux; Android 9; SAMSUNG SM-G955F Build/PPR1.180610.011) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/9.4 Chrome/67.0.3396.87 Mobile Safari/537.36"
-    return "Samsung Internet";
-  } else if (userAgent.includes("Opera") || userAgent.includes("OPR")) {
-    // "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36 OPR/90.0.4480.54"
-    return "Opera";
-  } else if (userAgent.includes("Trident")) {
-    // "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)"
-    return "Microsoft Internet Explorer";
-  } else if (userAgent.includes("Edge")) {
-    // "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299"
-    return "Microsoft Edge (Legacy)";
-  } else if (userAgent.includes("Edg")) {
-    // "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36 Edg/104.0.1293.70"
-    return "Microsoft Edge (Chromium)";
-  } else if (userAgent.includes("Chrome")) {
-    // "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
-    return "Google Chrome";
-  } else if (userAgent.includes("Safari")) {
-    // "Mozilla/5.0 (iPhone; CPU iPhone OS 15_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6 Mobile/15E148 Safari/604.1"
-    return "Apple Safari";
-  } else {
-    return "unknown";
-  }
-}
-exports.getBrowserName = getBrowserName;
-
-/***/ }),
-
-/***/ 7247:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({
-  value: true
-}));
-exports.OnWeb = void 0;
-var TransactionManager_1 = __webpack_require__(3553);
-var OnWebBody_1 = __webpack_require__(3900);
-var OnWebManager_1 = __webpack_require__(8931);
-var IMQAAgent_1 = __webpack_require__(6483);
-var WebBridge_1 = __webpack_require__(5498);
-var OnWeb = /** @class */function () {
-  function OnWeb() {
-    this.type = "gzip";
-    this.ip = "127.0.0.1";
-    this.body = new OnWebBody_1.OnWebBody();
-  }
-  /**
-   * OnWeb 인스턴스 불러오기
-   * @constructor
-   */
-  OnWeb.GetInstance = function () {
-    if (!OnWeb.instance) {
-      OnWeb.instance = new OnWeb();
-    }
-    return OnWeb.instance;
-  };
-  OnWeb.prototype.init = function (config) {
-    this.onWebManager = new OnWebManager_1.OnWebManager();
-    this.body.device_info = this.onWebManager.makeDeviceInfoData(config);
-    this.body.dump_init_time = new Date().valueOf();
-    this.body.launch_time = new Date().valueOf();
-    this.body.process_id = TransactionManager_1.TransactionManager.GetProcessID();
-    this.body.package_name = IMQAAgent_1.IMQAAgent.GetInstance().config.package_name;
-    this.body.process_name = IMQAAgent_1.IMQAAgent.GetInstance().config.process_name;
-    this.body.platform = 'aos';
-    this.body.service = 'mpm';
-    var user_id = localStorage.getItem("IMQA-Browser-User-ID");
-    if (!user_id) localStorage.setItem("IMQA-Browser-User-ID", TransactionManager_1.TransactionManager.GetUserID());
-    this.body.user_id = localStorage.getItem("IMQA-Browser-User-ID");
-    this.body.project_key = IMQAAgent_1.IMQAAgent.GetInstance().config.projectKey;
-    this.project_key = IMQAAgent_1.IMQAAgent.GetInstance().config.projectKey;
-  };
-  OnWeb.prototype.create = function () {
-    var resData = this.onWebManager.makeRenderData();
-    this.body.data.push(resData);
-    // onWebManager 설정
-    this.onWebManager.init();
-  };
-  OnWeb.prototype.finish = function () {
-    var _this = this;
-    var data = {
-      type: this.type,
-      ip: this.ip,
-      body: this.body,
-      project_key: this.project_key
-    };
-    new WebBridge_1.WebBridge().send(data).then(function () {
-      // 데이터보내고 dump 초기화
-      _this.body.data = [];
-      _this.onWebManager.clearSendInterval();
-    })["catch"](function () {
-      // error가 날 경우 인터벌 클리어
-      _this.body.data = [];
-      console.log("err");
-    });
-  };
-  OnWeb.prototype.update = function (data) {
-    var webData = this.onWebManager.makeWebData(data);
-    this.body.data.push(webData);
-  };
-  return OnWeb;
-}();
-exports.OnWeb = OnWeb;
-
-/***/ }),
-
-/***/ 3900:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({
-  value: true
-}));
-exports.OnWebBody = void 0;
-var OnWebBody = /** @class */function () {
-  function OnWebBody() {
-    this.launch_time = 0;
-    this.dump_init_time = 0;
-    this.mpm_version = "2.20.0";
-    this.crash_version = "0.0.0";
-    this.core_version = "0.0.0";
-    this.dump_interval = 1000;
-    this.package_name = "";
-    this.process_name = "";
-    this.project_key = "";
-    this.platform = "";
-    this.service = "";
-    this.custom_user_id = {
-      id: "",
-      name: "",
-      email: ""
-    };
-    this.device_info = {
-      os: "",
-      app: "",
-      device: "",
-      brand: "",
-      carrier: "-",
-      uuid: "",
-      ip: "-",
-      location: {
-        code: "",
-        country_name: ""
-      },
-      city: {
-        code: "",
-        city_name: ""
-      }
-    };
-    this.process_id = "";
-    this.user_id = "";
-    this.data = [];
-  }
-  return OnWebBody;
-}();
-exports.OnWebBody = OnWebBody;
-
-/***/ }),
-
-/***/ 8931:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var __awaiter = this && this.__awaiter || function (thisArg, _arguments, P, generator) {
-  function adopt(value) {
-    return value instanceof P ? value : new P(function (resolve) {
-      resolve(value);
-    });
-  }
-  return new (P || (P = Promise))(function (resolve, reject) {
-    function fulfilled(value) {
-      try {
-        step(generator.next(value));
-      } catch (e) {
-        reject(e);
-      }
-    }
-    function rejected(value) {
-      try {
-        step(generator["throw"](value));
-      } catch (e) {
-        reject(e);
-      }
-    }
-    function step(result) {
-      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
-    }
-    step((generator = generator.apply(thisArg, _arguments || [])).next());
-  });
-};
-var __generator = this && this.__generator || function (thisArg, body) {
-  var _ = {
-      label: 0,
-      sent: function sent() {
-        if (t[0] & 1) throw t[1];
-        return t[1];
-      },
-      trys: [],
-      ops: []
-    },
-    f,
-    y,
-    t,
-    g;
-  return g = {
-    next: verb(0),
-    "throw": verb(1),
-    "return": verb(2)
-  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
-    return this;
-  }), g;
-  function verb(n) {
-    return function (v) {
-      return step([n, v]);
-    };
-  }
-  function step(op) {
-    if (f) throw new TypeError("Generator is already executing.");
-    while (g && (g = 0, op[0] && (_ = 0)), _) try {
-      if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-      if (y = 0, t) op = [op[0] & 2, t.value];
-      switch (op[0]) {
-        case 0:
-        case 1:
-          t = op;
-          break;
-        case 4:
-          _.label++;
-          return {
-            value: op[1],
-            done: false
-          };
-        case 5:
-          _.label++;
-          y = op[1];
-          op = [0];
-          continue;
-        case 7:
-          op = _.ops.pop();
-          _.trys.pop();
-          continue;
-        default:
-          if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
-            _ = 0;
-            continue;
-          }
-          if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
-            _.label = op[1];
-            break;
-          }
-          if (op[0] === 6 && _.label < t[1]) {
-            _.label = t[1];
-            t = op;
-            break;
-          }
-          if (t && _.label < t[2]) {
-            _.label = t[2];
-            _.ops.push(op);
-            break;
-          }
-          if (t[2]) _.ops.pop();
-          _.trys.pop();
-          continue;
-      }
-      op = body.call(thisArg, _);
-    } catch (e) {
-      op = [6, e];
-      y = 0;
-    } finally {
-      f = t = 0;
-    }
-    if (op[0] & 5) throw op[1];
-    return {
-      value: op[0] ? op[1] : void 0,
-      done: true
-    };
-  }
-};
-Object.defineProperty(exports, "__esModule", ({
-  value: true
-}));
-exports.OnWebManager = void 0;
-var TransactionManager_1 = __webpack_require__(3553);
-var IMQAAgent_1 = __webpack_require__(6483);
-var OnWeb_1 = __webpack_require__(7247);
-var Util_1 = __webpack_require__(3721);
-var OnWebManager = /** @class */function () {
-  function OnWebManager() {
-    this.intervalSetTime = null;
-  }
-  OnWebManager.prototype.init = function () {
-    // 인터벌 주기로 보내기
-    this.SendInterval();
-    // 윈도우가 닫힐때 보내기
-    this.onBeforeunload();
-  };
-  /**
-   * 브라우저가 사라질때 보내기
-   * @param data
-   */
-  OnWebManager.prototype.onBeforeunload = function () {
-    var _this = this;
-    window.addEventListener("beforeunload", function (event) {
-      return __awaiter(_this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-          // 표준에 따라 기본 동작 방지
-          event.preventDefault();
-          this.clearSendInterval();
-          if (OnWeb_1.OnWeb.GetInstance().body.data.length <= 0) return [2 /*return*/];
-          OnWeb_1.OnWeb.GetInstance().finish();
-          return [2 /*return*/];
-        });
-      });
-    });
-  };
-  /**
-   * 브라우저 주기적으로 데이터 보내기
-   * @param data
-   * @param onWeb
-   */
-  OnWebManager.prototype.SendInterval = function () {
-    var intervalTime = IMQAAgent_1.IMQAAgent.GetInstance().config.webIntervalTime;
-    // 데이터가 많아져서 API에 응답이 늦어질경우 동적으로 intervalTime 늘리기위해 setTimeout 사용
-    this.intervalSetTime = setTimeout(function interval() {
-      if (OnWeb_1.OnWeb.GetInstance().body.data.length > 0) {
-        OnWeb_1.OnWeb.GetInstance().finish();
-      }
-      this.intervalSetTime = setTimeout(interval, intervalTime);
-    }, intervalTime);
-  };
-  /**
-   * 브라우저 주기적으로 보내는 interval clear
-   */
-  OnWebManager.prototype.clearSendInterval = function () {
-    clearTimeout(this.intervalSetTime);
-  };
-  OnWebManager.prototype.makeDeviceInfoData = function (config) {
-    return {
-      os: config.root_window.navigator.platform,
-      app: "1.0",
-      device: this.getBrowserName(config.root_window.navigator.userAgent),
-      brand: config.root_window.navigator.vendor,
-      carrier: "-",
-      uuid: localStorage.getItem("IMQA-Browser-User-ID"),
-      ip: "-",
-      location: {
-        code: "",
-        country_name: ""
-      },
-      city: {
-        code: "",
-        city_name: ""
-      }
-    };
-  };
-  OnWebManager.prototype.makeRenderData = function () {
-    var _a = (0, Util_1.parseURL)(IMQAAgent_1.IMQAAgent.GetInstance().config.root_window.location.href),
-      protocol = _a.protocol,
-      host = _a.host,
-      pathname = _a.pathname;
-    var locationList = IMQAAgent_1.IMQAAgent.GetInstance().config.root_window.location.pathname.split("/");
-    var lastPath = locationList[locationList.length - 1];
-    var locationOrigin = IMQAAgent_1.IMQAAgent.GetInstance().config.root_window.location.origin;
-    var change_pathname = IMQAAgent_1.IMQAAgent.GetInstance().config.customPathName ? IMQAAgent_1.IMQAAgent.GetInstance().config.customPathName : pathname;
-    return {
-      type: "render",
-      activity_name: lastPath ? IMQAAgent_1.IMQAAgent.GetInstance().config.root_window.location.href : locationOrigin,
-      screen_name: protocol + "://" + host + change_pathname,
-      lifecycle_name: "onResume",
-      start_time: new Date().valueOf(),
-      end_time: new Date().valueOf(),
-      behaviorTxId: TransactionManager_1.TransactionManager.GetTxID(),
-      txId: TransactionManager_1.TransactionManager.GetProcessID()
-    };
-  };
-  OnWebManager.prototype.makeWebData = function (data) {
-    var locationList = IMQAAgent_1.IMQAAgent.GetInstance().config.root_window.location.pathname.split("/");
-    var lastPath = locationList[locationList.length - 1];
-    var locationOrigin = IMQAAgent_1.IMQAAgent.GetInstance().config.root_window.location.origin;
-    return {
-      type: "webview",
-      body: JSON.stringify(data),
-      screen_name: lastPath ? lastPath : locationOrigin,
-      behaviorTxId: TransactionManager_1.TransactionManager.GetTxID(),
-      txId: TransactionManager_1.TransactionManager.GetProcessID(),
-      metaData: ""
-    };
-  };
-  OnWebManager.prototype.getBrowserName = function (userAgent) {
-    // The order matters here, and this may report false positives for unlisted browsers.
-    if (userAgent.includes("Firefox")) {
-      // "Mozilla/5.0 (X11; Linux i686; rv:104.0) Gecko/20100101 Firefox/104.0"
-      return "Mozilla Firefox";
-    } else if (userAgent.includes("SamsungBrowser")) {
-      // "Mozilla/5.0 (Linux; Android 9; SAMSUNG SM-G955F Build/PPR1.180610.011) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/9.4 Chrome/67.0.3396.87 Mobile Safari/537.36"
-      return "Samsung Internet";
-    } else if (userAgent.includes("Opera") || userAgent.includes("OPR")) {
-      // "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36 OPR/90.0.4480.54"
-      return "Opera";
-    } else if (userAgent.includes("Trident")) {
-      // "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 10.0; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)"
-      return "Microsoft Internet Explorer";
-    } else if (userAgent.includes("Edge")) {
-      // "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299"
-      return "Microsoft Edge (Legacy)";
-    } else if (userAgent.includes("Edg")) {
-      // "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36 Edg/104.0.1293.70"
-      return "Microsoft Edge (Chromium)";
-    } else if (userAgent.includes("Chrome")) {
-      // "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
-      return "Google Chrome";
-    } else if (userAgent.includes("Safari")) {
-      // "Mozilla/5.0 (iPhone; CPU iPhone OS 15_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6 Mobile/15E148 Safari/604.1"
-      return "Apple Safari";
-    } else {
-      return "unknown";
-    }
-  };
-  return OnWebManager;
-}();
-exports.OnWebManager = OnWebManager;
-
-/***/ }),
-
-/***/ 5498:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({
-  value: true
-}));
-exports.WebBridge = void 0;
-var IMQAAgent_1 = __webpack_require__(6483);
-var WebBridge = /** @class */function () {
-  function WebBridge() {
-    this.COLLECTOR_URL = IMQAAgent_1.IMQAAgent.GetInstance().config.collectorUrl;
-  }
-  WebBridge.prototype.send = function (data) {
-    var _this = this;
-    return new Promise(function (resolve, reject) {
-      var xhr = new XMLHttpRequest();
-      xhr.onload = function () {
-        if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-          resolve(xhr.response);
-        } else {
-          reject({
-            status: xhr.status,
-            statusText: xhr.statusText
-          });
-        }
-      };
-      xhr.open("POST", _this.COLLECTOR_URL);
-      xhr.responseType = "json";
-      xhr.setRequestHeader("Access-Control-Allow-Headers", "*");
-      xhr.setRequestHeader('Content-Encoding', 'gzip');
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('project_key', IMQAAgent_1.IMQAAgent.GetInstance().config.projectKey);
-      xhr.setRequestHeader('app_version', '1.0');
-      xhr.setRequestHeader('web_agent', IMQAAgent_1.IMQAAgent.GetInstance().config.agentType);
-      xhr.send(JSON.stringify(data.body));
-    });
-  };
-  return WebBridge;
-}();
-exports.WebBridge = WebBridge;
 
 /***/ }),
 
@@ -11667,7 +10944,7 @@ exports["default"] = _default;
 /************************************************************************/
 /******/ 	// The module cache
 /******/ 	var __webpack_module_cache__ = {};
-/******/ 	
+/******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
 /******/ 		// Check if module is in cache
@@ -11681,17 +10958,17 @@ exports["default"] = _default;
 /******/ 			loaded: false,
 /******/ 			exports: {}
 /******/ 		};
-/******/ 	
+/******/
 /******/ 		// Execute the module function
 /******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-/******/ 	
+/******/
 /******/ 		// Flag the module as loaded
 /******/ 		module.loaded = true;
-/******/ 	
+/******/
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-/******/ 	
+/******/
 /************************************************************************/
 /******/ 	/* webpack/runtime/node module decorator */
 /******/ 	(() => {
@@ -11701,7 +10978,7 @@ exports["default"] = _default;
 /******/ 			return module;
 /******/ 		};
 /******/ 	})();
-/******/ 	
+/******/
 /************************************************************************/
 var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be in strict mode.
