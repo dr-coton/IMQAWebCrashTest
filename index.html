@@ -22,7 +22,11 @@
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?1">
     <link rel="apple-touch-icon" sizes="114x114" href="https://s.pstatic.net/static/www/u/2014/0328/mma_204243574.png">
     <link rel="apple-touch-icon" href="https://s.pstatic.net/static/www/u/2014/0328/mma_20432863.png">
-    <script>window.nmain = window.nmain || {}, window.nmain.supportFlicking = !1;
+    <script>
+        performance.mark('dom-start')
+        window.nmain = window.nmain || {}, window.nmain.supportFlicking = !1;
+
+
     var nsc = "navertop.v4", ua = navigator.userAgent, useIeJSFlag = "1";
     window.nmain.isIE = "0" === useIeJSFlag, document.getElementsByTagName("html")[0].setAttribute("data-useragent", ua), window.nmain.isIE && (Object.create = function (n) {
         function e() {
@@ -1414,7 +1418,8 @@
             async=""></script>
     <script type="text/javascript" src="https://ssl.pstatic.net/tveta/libs/glad/prod/gfp-ext-nda.js?sv=0.3.4"
             async=""></script>
-    <script src="./imqa-web-agent.js"></script>
+    <!--    <script src="./dist/imqa-web-agent.js"></script>-->
+    <script src="./dist/imqa-web-agent.js"></script>
 </head>
 <body>
 <div id="u_skip"><a href="#newsstand"><span>뉴스스탠드 바로가기</span></a> <a href="#themecast"><span>주제별캐스트 바로가기</span></a> <a
@@ -6740,6 +6745,134 @@
                         }
 
                         $(document).ready(function () {
+                            promiseFn1().then((i) => {
+                                console.log(i)
+                            })
+                            promiseFn2()
+                            outer1()
+                            outer2()
+                            outer3()
+                            function outer1(){
+                                performance.mark('start')
+                                let tt = 0;
+                                for(let i = 0; i < 500; i++){
+                                    console.log(1)
+                                }
+
+                                outer1_inner()
+                                performance.mark('end')
+                                performance.measure('outer1', 'start', 'end')
+                            }
+
+                            function outer1_inner(){
+                                performance.mark('outer1_inner-start1')
+                                let tt = 0;
+                                for(let i = 0; i < 500; i++){
+                                    console.log(1)
+                                }
+                                performance.mark('outer1_inner-end1')
+                                performance.measure('outer1_inner', {
+                                    detail:{
+                                        parentName: 'outer1'
+                                    },
+                                    start:'outer1_inner-start1',
+                                    end:'outer1_inner-end1'
+                                })
+                            }
+
+                            function outer2_inner_inner(){
+                                performance.mark('outer2_inner_inner-start2')
+                                let tt = 0;
+                                for(let i = 0; i < 500; i++){
+                                    console.log(1)
+                                }
+
+                                performance.mark('outer2_inner_inner-end2')
+                                performance.measure('outer2_inner_inner', {
+                                    detail:{
+                                        parentName: 'outer2_inner'
+                                    },
+                                    start:'outer2_inner_inner-start2',
+                                    end:'outer2_inner_inner-end2'
+                                })
+                            }
+
+                            function outer2_inner(){
+                                performance.mark('outer2_inner-start2')
+                                let tt = 0;
+                                for(let i = 0; i < 500; i++){
+                                    console.log(1)
+                                }
+                                outer2_inner_inner()
+                                performance.mark('outer2_inner-end2')
+                                performance.measure('outer2_inner', {
+                                    detail:{
+                                        parentName: 'outer2'
+                                    },
+                                    start:'outer2_inner-start2',
+                                    end:'outer2_inner-end2'
+                                })
+                            }
+
+                            function outer2(){
+                                performance.mark('outer2-start3')
+                                let tt = 0;
+                                for(let i = 0; i < 500; i++){
+                                    console.log(1)
+                                }
+
+                                outer2_inner();
+                                performance.mark('outer2-end3')
+                                performance.measure('outer2', 'outer2-start3', 'outer2-end3')
+                            }
+
+                            function outer3(){
+                                performance.mark('outer3-start5')
+                                let tt = 0;
+                                for(let i = 0; i < 500; i++){
+                                    console.log(1)
+                                }
+                                performance.mark('outer3-end5')
+                                performance.measure('outer3', {
+                                    detail:{
+                                        parentName: ''
+                                    },
+                                    start:'outer3-start5',
+                                    end:'outer3-end5'
+                                })
+                            }
+
+                            function promiseFn1(){
+                                return new Promise(
+                                    function(resolve, reject) {
+                                        performance.mark('promiseFn1-start')
+                                        for(let i = 0; i < 500; i++){
+                                            console.log(1)
+                                        }
+                                        performance.mark('promiseFn1-end')
+                                        performance.measure('promiseFn1', 'promiseFn1-start', 'promiseFn1-end')
+                                        resolve();
+                                    }
+                                );
+
+                            }
+
+                            function promiseFn2(){
+                                return new Promise(
+                                    function(resolve, reject) {
+                                        performance.mark('promiseFn2-start')
+                                        for(let i = 0; i < 500; i++){
+                                            console.log(1)
+                                        }
+                                        performance.mark('promiseFn2-end')
+                                        performance.measure('promiseFn2', 'promiseFn2-start', 'promiseFn2-end')
+                                        resolve();
+                                    }
+                                );
+
+                            }
+
+
 
                             $("#errorButton").on("click", function () {
                                 throw new Error();
@@ -6751,16 +6884,29 @@
                             })
                             $("#customNameHook").on("click", function () {
                                 console.log("훅요청 중")
+                                performance.mark('test-start');
                                 IMQAAgent.collect({
                                     collect_time: 0,
                                     path_name: "/screen",
                                     alias_name: "별명"
                                 })
+                                performance.mark('test-end');
+                                performance.measure('duration-zero', 'test-start', 'test-end');
                             })
                             $("#customNonPathNameHook").on("click", function () {
-                                console.log("훅요청 중")
+                                console.log("훅요청 중11")
+                                performance.mark('test-start');
+
+                                $.ajax({
+                                    url: 'https://fakestoreapi.com/products/1',
+                                    type: 'GET'
+                                });
+
+                                performance.mark('test-end');
+                                performance.measure('duration-zero', 'test-start', 'test-end');
+
                                 IMQAAgent.collect({
-                                    aidns: 0
+                                    path_name: "/screen"
                                 })
                             })
 
@@ -6805,6 +6951,10 @@
                             });
 
                         })
+
+                        performance.mark('dom-end')
+                        performance.measure('DOM-PROCESS', 'dom-start', 'dom-end')
+
                     </script>
 
                     <div class="eg-flick-viewport"
